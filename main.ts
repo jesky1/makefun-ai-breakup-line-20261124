@@ -37,8 +37,24 @@ function validateLine(line) {
       `Line must be ${MIN_LINE_LENGTH}-${MAX_LINE_LENGTH} characters, got ${line.length}.`,
     );
   }
+  // Same limit in bytes: the judge reads the file, so a line of
+  // multi-byte characters could pass the 200-character limit while
+  // being far longer on disk. For this ASCII entry both counts are 115.
+  const byteLength = Buffer.byteLength(line, 'utf8');
+  if (byteLength < MIN_LINE_LENGTH || byteLength > MAX_LINE_LENGTH) {
+    throw new Error(
+      `Line must be ${MIN_LINE_LENGTH}-${MAX_LINE_LENGTH} bytes, got ${byteLength}.`,
+    );
+  }
   if (line.includes('\n') || line.includes('\r')) {
     throw new Error('Line must be a single line (no newline characters).');
+  }
+  // Reject control characters (including ANSI escape sequences, which
+  // live in this range): an invisible control byte would change what
+  // the judge sees — or does — when the line is displayed, while the
+  // file still looks like one clean line.
+  if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(line)) {
+    throw new Error('Line must not contain control characters or ANSI escape sequences.');
   }
   // The gate rejects whitespace-only text, so fail loudly here too.
   if (line.trim().length === 0) {
